@@ -133,14 +133,14 @@ with col1:
     st.metric("Total Stock Value (AED)", f"{current_stock_value:,.0f}")
 
 with col2:
-    st.metric("Total Monthly Sales (AED)", f"{current_monthly_sale:,.0f}")
+    st.metric("Monthly Sales (AED)", f"{current_monthly_sale:,.0f}")
 
 with col3:
-    st.metric("Total Avg. Per Day (AED)", f"{current_avg_per_day:,.0f}")
+    st.metric("Avg sales/Day (AED)", f"{current_avg_per_day:,.0f}")
 
 with col4:
     delta_value = f"{current_reduce_stock:,.0f}"
-    st.metric(f"Inventory Status (Reduce Stock)", delta_value, delta=status)
+    st.metric(f"Inventory Status (Reduce Stock Value)", delta_value, delta=status)
 
 st.markdown("---")
 
