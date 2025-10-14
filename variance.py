@@ -144,7 +144,7 @@ else:
         # Sort the visualization data by Stock Value
         df_chart_data = df_chart_data.sort_values(by='Stock Value', ascending=False)
         
-        # Chart 1: Stock Value by Y-axis Field (Category or Outlet) - NOW VERTICAL
+        # Chart 1: Stock Value by Y-axis Field (Category or Outlet) - VERTICAL
         base = alt.Chart(df_chart_data).encode(
             x=alt.X(y_axis_field, sort='-y', title=y_axis_field, axis=alt.Axis(labelAngle=-45)), # Set X to category/outlet, add rotation for labels
             tooltip=[y_axis_field, alt.Tooltip('Stock Value', format=',.0f'), 'Max Stock']
@@ -156,17 +156,17 @@ else:
             y=alt.Y('Stock Value', title="Current Stock Value (AED)"), # Set Y to value field
         )
 
-        # Chart 2: Reduce Stock by Y-axis Field - NOW VERTICAL
+        # Chart 2: Reduce Stock by Y-axis Field - VERTICAL with INVERTED Y-AXIS
         chart_reduce = alt.Chart(df_chart_data).encode(
             # Use the same sort order as the stock chart, applied to X axis
             x=alt.X(y_axis_field, sort=alt.EncodingSortField(field="Stock Value", op="sum", order='descending'), title=y_axis_field, axis=alt.Axis(labelAngle=-45)),
-            y=alt.Y('Reduce Stock', title="Reduce Stock (Max Stock - Current Stock)"), # Set Y to value field
+            y=alt.Y('Reduce Stock', title="Reduce Stock (Max Stock - Current Stock)", scale=alt.Scale(reverse=True)), # <<-- AXIS REVERSAL HERE
             color=alt.Color('Reduce Stock', 
                             scale=alt.Scale(domain=[df_chart_data['Reduce Stock'].min(), 0, df_chart_data['Reduce Stock'].max()], range=['red', 'gray', 'green']),
                             legend=None),
             tooltip=[y_axis_field, alt.Tooltip('Reduce Stock', format=',.0f')]
         ).mark_bar().properties(
-            title=f"Inventory Discrepancy (Reduce Stock) by {y_axis_field}"
+            title=f"Inventory Discrepancy (Reduce Stock) by {y_axis_field} (Inverted Y-Axis)"
         )
 
         # Combine the charts vertically
