@@ -156,17 +156,20 @@ else:
             y=alt.Y('Stock Value', title="Current Stock Value (AED)"), # Set Y to value field
         )
 
-        # Chart 2: Reduce Stock by Y-axis Field - VERTICAL with INVERTED Y-AXIS
-        chart_reduce = alt.Chart(df_chart_data).encode(
+        # Chart 2: Reduce Stock by Y-axis Field - VERTICAL with INVERTED Y-AXIS (Filtered to only show <= 0)
+        chart_reduce = alt.Chart(df_chart_data).transform_filter(
+            alt.FieldRangePredicate(field="Reduce Stock", range=[None, 0]) # Filter: Keep only Reduce Stock <= 0 (Overstocked)
+        ).encode(
             # Use the same sort order as the stock chart, applied to X axis
             x=alt.X(y_axis_field, sort=alt.EncodingSortField(field="Stock Value", op="sum", order='descending'), title=y_axis_field, axis=alt.Axis(labelAngle=-45)),
-            y=alt.Y('Reduce Stock', title="Reduce Stock (Max Stock - Current Stock)", scale=alt.Scale(reverse=True)), # <<-- AXIS REVERSAL HERE
+            y=alt.Y('Reduce Stock', title="Overstock (Max - Current)", scale=alt.Scale(reverse=True)), 
             color=alt.Color('Reduce Stock', 
-                            scale=alt.Scale(domain=[df_chart_data['Reduce Stock'].min(), 0, df_chart_data['Reduce Stock'].max()], range=['red', 'gray', 'green']),
+                            # Adjust color range/domain since only negative/zero values remain
+                            scale=alt.Scale(domain=[df_chart_data['Reduce Stock'].min(), 0], range=['red', 'gray']),
                             legend=None),
             tooltip=[y_axis_field, alt.Tooltip('Reduce Stock', format=',.0f')]
         ).mark_bar().properties(
-            title=f"Inventory Discrepancy (Reduce Stock) by {y_axis_field} (Inverted Y-Axis)"
+            title=f"Overstocked Items (Reduce Stock $\le 0$) by {y_axis_field}"
         )
 
         # Combine the charts vertically
