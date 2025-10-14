@@ -3,26 +3,27 @@ import pandas as pd
 import altair as alt
 import io
 
+# --- Column Name Constants ---
+# 🚨 Fix 1: Use the exact, case-sensitive column names from your Excel file 🚨
+OUTLET_COL = 'outlet' 
+CATEGORY_COL = 'CATEGORY'
+
 # --- Load Data ---
-# Load the pre-processed and combined data from an Excel file
-EXCEL_FILE_NAME = "shane.Xlsx"
-COLUMN_TO_FILTER = 'outlet' # Ensure this matches the exact column name in your Excel file
+EXCEL_FILE_NAME = "combined_stock_data.xlsx"
 
 try:
-    # Reading from Excel (.xlsx). Requires 'openpyxl' or 'xlrd' to be installed.
-    # If your data is on a specific sheet, use: pd.read_excel(EXCEL_FILE_NAME, sheet_name="Your Sheet Name")
+    # Reading from Excel (.xlsx).
     df_data = pd.read_excel(EXCEL_FILE_NAME)
     
     # --- ⚠️ DEBUGGING STEP ⚠️ ---
-    # This line will show you the exact column names read from the Excel file.
-    # If 'Outlet' is not present, check this output and correct the COLUMN_TO_FILTER variable above.
+    # Display columns in the sidebar for confirmation
     st.sidebar.markdown(f"**Loaded Columns:** {df_data.columns.tolist()}")
 
 except FileNotFoundError:
     st.error(f"Error: '{EXCEL_FILE_NAME}' not found. Please ensure the Excel file is in the same directory as the script.")
     st.stop()
 except KeyError as e:
-    st.error(f"KeyError: The required column '{COLUMN_TO_FILTER}' was not found in the Excel file. Please check the spelling and case of your column headers. Found columns: {df_data.columns.tolist()}")
+    st.error(f"KeyError: A required column was not found. Please ensure column names are exactly '{OUTLET_COL}' and '{CATEGORY_COL}'. Found columns: {df_data.columns.tolist()}")
     st.stop()
 except Exception as e:
     st.error(f"An unexpected error occurred while loading the data: {e}")
@@ -39,7 +40,8 @@ st.title("🛒 Al Madina Inventory & Sales Dashboard")
 st.sidebar.header("Filter Options")
 
 # Outlet Filter with "All Outlets" option
-outlet_list = sorted(df_data[COLUMN_TO_FILTER].unique()) # Use the verified column name
+# 🚨 Fix 2: Use OUTLET_COL
+outlet_list = sorted(df_data[OUTLET_COL].unique())
 outlet_options = ['All Outlets'] + outlet_list
 selected_outlet = st.sidebar.selectbox(
     'Select Outlet:',
@@ -51,10 +53,12 @@ selected_outlet = st.sidebar.selectbox(
 if selected_outlet == 'All Outlets':
     df_outlet_filtered = df_data.copy()
 else:
-    df_outlet_filtered = df_data[df_data[COLUMN_TO_FILTER] == selected_outlet].copy() # Use the verified column name
+    # 🚨 Fix 3: Use OUTLET_COL
+    df_outlet_filtered = df_data[df_data[OUTLET_COL] == selected_outlet].copy()
 
 # Category Filter (Radio buttons for single selection, plus 'All Categories' option)
-category_options = ['All Categories'] + sorted(df_outlet_filtered['Category'].unique())
+# 🚨 Fix 4: Use CATEGORY_COL
+category_options = ['All Categories'] + sorted(df_outlet_filtered[CATEGORY_COL].unique())
 selected_category = st.sidebar.radio(
     'Select Category:',
     category_options,
@@ -69,33 +73,38 @@ selected_category = st.sidebar.radio(
 if selected_category == 'All Categories':
     df_final_filtered = df_outlet_filtered
 else:
-    df_final_filtered = df_outlet_filtered[df_outlet_filtered['Category'] == selected_category]
+    # 🚨 Fix 5: Use CATEGORY_COL
+    df_final_filtered = df_outlet_filtered[df_outlet_filtered[CATEGORY_COL] == selected_category]
 
 
 # Determine the data source for the main chart/table based on the selection
 if selected_outlet == 'All Outlets' and selected_category != 'All Categories':
     # Aggregate data by OUTLET for the selected CATEGORY
-    df_chart_data = df_final_filtered.groupby(COLUMN_TO_FILTER).sum(numeric_only=True).reset_index() # Use the verified column name
-    y_axis_field = COLUMN_TO_FILTER # Chart will be Outlet-wise
+    # 🚨 Fix 6: Use OUTLET_COL
+    df_chart_data = df_final_filtered.groupby(OUTLET_COL).sum(numeric_only=True).reset_index()
+    y_axis_field = OUTLET_COL # Chart will be Outlet-wise
 elif selected_category == 'All Categories' and selected_outlet == 'All Outlets':
     # Aggregate data by CATEGORY for the overall view
-    df_chart_data = df_final_filtered.groupby('Category').sum(numeric_only=True).reset_index()
-    df_chart_data = df_chart_data.sort_values(by='Stock Value', ascending=False)
-    y_axis_field = 'Category' # Chart will be Category-wise
+    # 🚨 Fix 7: Use CATEGORY_COL
+    df_chart_data = df_final_filtered.groupby(CATEGORY_COL).sum(numeric_only=True).reset_index()
+    df_chart_data = df_chart_data.sort_values(by='STOCK VALUE', ascending=False)
+    y_axis_field = CATEGORY_COL # Chart will be Category-wise
 else:
     # Single Outlet (All or Single Category selected)
-    df_chart_data = df_final_filtered.sort_values(by='Stock Value', ascending=False)
-    y_axis_field = 'Category' # Chart will be Category-wise
+    # 🚨 Fix 8: Use 'STOCK VALUE'
+    df_chart_data = df_final_filtered.sort_values(by='STOCK VALUE', ascending=False)
+    y_axis_field = CATEGORY_COL # Chart will be Category-wise
 
 # ----------------------------------------------------
 # 3. Dynamic Key Insights
 # ----------------------------------------------------
 
 # Calculate total metrics for the Key Insights from the df_final_filtered (the non-aggregated source data)
-current_stock_value = df_final_filtered['Stock Value'].sum()
-current_total_sale = df_final_filtered['Total Sale'].sum()
-current_monthly_sale = df_final_filtered['Monthly Sale'].sum()
-current_reduce_stock = df_final_filtered['Reduce Stock'].sum()
+# 🚨 Fix 9-12: Use correct column names
+current_stock_value = df_final_filtered['STOCK VALUE'].sum()
+current_total_sale = df_final_filtered['TOTAL SALE'].sum()
+current_monthly_sale = df_final_filtered['MONTHLY SALE'].sum()
+current_reduce_stock = df_final_filtered['REDUCE STOCK'].sum()
 
 # Determine Overstocked/Understocked status for the status message
 status = "Balanced"
@@ -135,16 +144,18 @@ else:
     if selected_category != 'All Categories' and selected_outlet != 'All Outlets':
         # Reuse logic for single item view: simpler table and stock vs max chart
         data_display = df_chart_data.iloc[0]
-        st.table(data_display[['Category', 'Stock Value', 'Reduce Stock', 'Max Stock', 'Monthly Sale', 'Total Sale']].rename({
-            'Stock Value': 'Current Stock Value', 
-            'Reduce Stock': 'Max Stock - Current Stock',
-            'Max Stock': 'Max Allowed Stock'
-        }).to_frame().T.set_index('Category'))
+        # 🚨 Fix 13: Use correct column names
+        st.table(data_display[[CATEGORY_COL, 'STOCK VALUE', 'REDUCE STOCK', 'MAX STOCK', 'MONTHLY SALE', 'TOTAL SALE']].rename({
+            'STOCK VALUE': 'Current Stock Value', 
+            'REDUCE STOCK': 'Max Stock - Current Stock',
+            'MAX STOCK': 'Max Allowed Stock'
+        }).to_frame().T.set_index(CATEGORY_COL))
         
         st.subheader("Stock vs. Max Stock")
         stock_chart_data = pd.DataFrame({
             'Metric': ['Current Stock', 'Max Stock'],
-            'Value': [data_display['Stock Value'], data_display['Max Stock']]
+            # 🚨 Fix 14: Use correct column names
+            'Value': [data_display['STOCK VALUE'], data_display['MAX STOCK']]
         })
         
         stock_bar_chart = alt.Chart(stock_chart_data).mark_bar().encode(
@@ -159,32 +170,40 @@ else:
     # 4b. Multiple Items/Full Chart View (Updated to be vertical)
     else:
         # Sort the visualization data by Stock Value
-        df_chart_data = df_chart_data.sort_values(by='Stock Value', ascending=False)
+        # 🚨 Fix 15: Use 'STOCK VALUE'
+        df_chart_data = df_chart_data.sort_values(by='STOCK VALUE', ascending=False)
         
         # Chart 1: Stock Value by Y-axis Field (Category or Outlet) - VERTICAL
         base = alt.Chart(df_chart_data).encode(
             x=alt.X(y_axis_field, sort='-y', title=y_axis_field, axis=alt.Axis(labelAngle=-45)), # Set X to category/outlet, add rotation for labels
-            tooltip=[y_axis_field, alt.Tooltip('Stock Value', format=',.0f'), 'Max Stock']
+            # 🚨 Fix 16: Use correct column names
+            tooltip=[y_axis_field, alt.Tooltip('STOCK VALUE', format=',.0f'), 'MAX STOCK']
         ).properties(
             title=f"Current Stock Value by {y_axis_field}"
         )
 
         chart_stock = base.mark_bar(color='#4c78a8').encode(
-            y=alt.Y('Stock Value', title="Current Stock Value (AED)"), # Set Y to value field
+            # 🚨 Fix 17: Use 'STOCK VALUE'
+            y=alt.Y('STOCK VALUE', title="Current Stock Value (AED)"), # Set Y to value field
         )
 
         # Chart 2: Reduce Stock by Y-axis Field - VERTICAL with INVERTED Y-AXIS (Filtered to only show <= 0)
+        # 🚨 Fix 18: Use 'REDUCE STOCK'
         chart_reduce = alt.Chart(df_chart_data).transform_filter(
-            alt.FieldRangePredicate(field="Reduce Stock", range=[None, 0]) # Filter: Keep only Reduce Stock <= 0 (Overstocked)
+            alt.FieldRangePredicate(field="REDUCE STOCK", range=[None, 0]) # Filter: Keep only Reduce Stock <= 0 (Overstocked)
         ).encode(
             # Use the same sort order as the stock chart, applied to X axis
-            x=alt.X(y_axis_field, sort=alt.EncodingSortField(field="Stock Value", op="sum", order='descending'), title=y_axis_field, axis=alt.Axis(labelAngle=-45)),
-            y=alt.Y('Reduce Stock', title="Overstock (Max - Current)", scale=alt.Scale(reverse=True)), 
-            color=alt.Color('Reduce Stock', 
+            # 🚨 Fix 19: Use 'STOCK VALUE'
+            x=alt.X(y_axis_field, sort=alt.EncodingSortField(field="STOCK VALUE", op="sum", order='descending'), title=y_axis_field, axis=alt.Axis(labelAngle=-45)),
+            # 🚨 Fix 20: Use 'REDUCE STOCK'
+            y=alt.Y('REDUCE STOCK', title="Overstock (Max - Current)", scale=alt.Scale(reverse=True)), 
+            # 🚨 Fix 21: Use 'REDUCE STOCK'
+            color=alt.Color('REDUCE STOCK', 
                             # Adjust color range/domain since only negative/zero values remain
-                            scale=alt.Scale(domain=[df_chart_data['Reduce Stock'].min(), 0], range=['red', 'gray']),
+                            scale=alt.Scale(domain=[df_chart_data['REDUCE STOCK'].min(), 0], range=['red', 'gray']),
                             legend=None),
-            tooltip=[y_axis_field, alt.Tooltip('Reduce Stock', format=',.0f')]
+            # 🚨 Fix 22: Use 'REDUCE STOCK'
+            tooltip=[y_axis_field, alt.Tooltip('REDUCE STOCK', format=',.0f')]
         ).mark_bar().properties(
             title=f"Overstocked Items (Reduce Stock $\le 0$) by {y_axis_field}"
         )
@@ -205,13 +224,15 @@ else:
     # 5. Display the filtered data table (always show this)
     st.subheader("Filtered Data Table")
     # Determine the columns to show in the table
-    table_cols = [COLUMN_TO_FILTER, 'Category', 'Stock Value', 'Reduce Stock', 'Total Sale', 'Max Stock', 'Monthly Sale']
+    # 🚨 Fix 23: Use correct column names
+    table_cols = [OUTLET_COL, CATEGORY_COL, 'STOCK VALUE', 'REDUCE STOCK', 'TOTAL SALE', 'MAX STOCK', 'MONTHLY SALE']
     
     # Filter columns based on the selection to keep the table clean and relevant
+    # 🚨 Fix 24-25: Use column name constants
     if selected_outlet != 'All Outlets':
-        table_cols.remove(COLUMN_TO_FILTER)
+        table_cols.remove(OUTLET_COL)
     if selected_category != 'All Categories':
-        table_cols.remove('Category')
+        table_cols.remove(CATEGORY_COL)
     
     # Show the non-aggregated data (df_final_filtered) in the table for detail
     st.dataframe(df_final_filtered[table_cols],
