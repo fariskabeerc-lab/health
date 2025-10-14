@@ -17,6 +17,7 @@ REDUCE_STOCK_COL = 'REDUCE STOCK'
 
 # --- Load Data ---
 try:
+    # Reverting to the original expected file name for continuity
     df_data = pd.read_csv("sss.csv")
     
     # CRITICAL FIX 1: Clean column names by stripping whitespace
@@ -97,21 +98,23 @@ else:
 
 # Determine the data source for the main chart/table based on the selection
 if selected_outlet == 'All Outlets' and selected_category != 'All Categories':
+    # Aggregates values by Outlet, no new calculation needed
     df_chart_data = df_final_filtered.groupby(OUTLET_COL).sum(numeric_only=True).reset_index()
     y_axis_field = OUTLET_COL 
 elif selected_category == 'All Categories' and selected_outlet == 'All Outlets':
+    # Aggregates values by Category, no new calculation needed
     df_chart_data = df_final_filtered.groupby(CATEGORY_COL).sum(numeric_only=True).reset_index()
     # Sort by MONTHLY SALE for chart order
     df_chart_data = df_chart_data.sort_values(by=MONTHLY_SALE_COL, ascending=False)
     y_axis_field = CATEGORY_COL 
 else:
-    # Single Outlet (All or Single Category selected)
+    # Single Outlet (All or Single Category selected) - uses existing row values
     # Sort by MONTHLY SALE for chart order
     df_chart_data = df_final_filtered.sort_values(by=MONTHLY_SALE_COL, ascending=False)
     y_axis_field = CATEGORY_COL 
 
 # ----------------------------------------------------
-# 3. Dynamic Key Insights
+# 3. Dynamic Key Insights (Uses .sum() which is necessary aggregation of existing data)
 # ----------------------------------------------------
 
 current_stock_value = df_final_filtered[STOCK_VALUE_COL].sum()
