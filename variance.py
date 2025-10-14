@@ -6,10 +6,12 @@ import io
 # --- Load Data ---
 # Load the pre-processed and combined data
 try:
-    # Ensure this file exists from the previous steps
-    df_data = pd.read_csv("combined_stock_data.csv")
+    # 🚨 CHANGE 1: Reading from Excel (.xlsx) instead of CSV
+    # Make sure you have the 'openpyxl' or 'xlrd' library installed: pip install openpyxl
+    df_data = pd.read_excel("combined_stock_data.xlsx")
 except FileNotFoundError:
-    st.error("Error: 'combined_stock_data.csv' not found. Please ensure the file is in the same directory as the script.")
+    # 🚨 CHANGE 2: Update the error message to reflect the new file name
+    st.error("Error: 'combined_stock_data.xlsx' not found. Please ensure the Excel file is in the same directory as the script.")
     st.stop()
 
 # --- Streamlit Layout ---
