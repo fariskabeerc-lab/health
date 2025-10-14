@@ -2,43 +2,52 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 import io
-import numpy as np # Import numpy for NaN handling
+import numpy as np 
 
 # --- Column Name Constants ---
+# Use the exact, case-sensitive column names provided by the user
 OUTLET_COL = 'outlet' 
 CATEGORY_COL = 'CATEGORY'
 STOCK_VALUE_COL = 'STOCK VALUE'
 TOTAL_SALE_COL = 'TOTAL SALE'
 MONTHLY_SALE_COL = 'MONTHLY SALE'
-MAX_STOCK_COL = 'MAX STOCK'
+MAX_STOCK_COL = 'MAX STOCK'  # The column the code is looking for
 REDUCE_STOCK_COL = 'REDUCE STOCK'
+# Note: AVG PER DAY is not used in the code logic, so it's omitted from constants
 
 # --- Load Data ---
 try:
     df_data = pd.read_csv("sss.csv")
     
-    # 🚨 CRITICAL FIX: Convert key columns to numeric. 
-    # 'errors="coerce"' turns any non-numeric values (like text, symbols, 
-    # or errors from badly formatted numbers) into NaN.
+    # 🚨 CRITICAL FIX 1: Clean column names by stripping whitespace 🚨
+    # This ensures "MAX STOCK " or " MAX STOCK" is treated as "MAX STOCK"
+    df_data.columns = df_data.columns.str.strip() 
+
+    # 🚨 CRITICAL FIX 2: Convert key columns to numeric.
     numeric_cols = [STOCK_VALUE_COL, TOTAL_SALE_COL, MONTHLY_SALE_COL, MAX_STOCK_COL, REDUCE_STOCK_COL]
     
     for col in numeric_cols:
         # First, strip common non-numeric characters if any were missed by the original script
-        if df_data[col].dtype == 'object':
+        if col in df_data.columns and df_data[col].dtype == 'object':
              df_data[col] = df_data[col].astype(str).str.replace(r'[$,]', '', regex=True)
              
+        # Convert to numeric, coercing errors to NaN
         df_data[col] = pd.to_numeric(df_data[col], errors='coerce')
         
-    # Optional: Fill NaN values with 0 after coercion to prevent aggregation errors later.
+    # Fill NaN values with 0 after coercion to prevent aggregation errors later.
     df_data[numeric_cols] = df_data[numeric_cols].fillna(0)
+    
+    # 💡 Debugging tip: Check if the required column is finally present
+    if MAX_STOCK_COL not in df_data.columns:
+         st.error(f"FATAL ERROR: Column '{MAX_STOCK_COL}' still not found after cleaning. Check your CSV file header for spelling/case.")
+         st.stop()
 
 
 except FileNotFoundError:
     st.error("Error: 'combined_stock_data.csv' not found. Please ensure the file is in the same directory as the script.")
     st.stop()
 except KeyError as e:
-    # This block should handle the case-sensitivity issue if it somehow reappears.
-    st.error(f"KeyError: Required column {e} not found. Please ensure all column constants match the CSV headers exactly (case-sensitive).")
+    st.error(f"KeyError: Required column {e} not found. Please ensure all column constants match the CSV headers exactly (case-sensitive). Found columns: {df_data.columns.tolist()}")
     st.stop()
 except Exception as e:
     st.error(f"An unexpected error occurred while loading or processing the data: {e}")
@@ -90,24 +99,20 @@ else:
 
 # Determine the data source for the main chart/table based on the selection
 if selected_outlet == 'All Outlets' and selected_category != 'All Categories':
-    # Aggregate data by OUTLET for the selected CATEGORY
     df_chart_data = df_final_filtered.groupby(OUTLET_COL).sum(numeric_only=True).reset_index()
-    y_axis_field = OUTLET_COL # Chart will be Outlet-wise
+    y_axis_field = OUTLET_COL 
 elif selected_category == 'All Categories' and selected_outlet == 'All Outlets':
-    # Aggregate data by CATEGORY for the overall view
     df_chart_data = df_final_filtered.groupby(CATEGORY_COL).sum(numeric_only=True).reset_index()
     df_chart_data = df_chart_data.sort_values(by=STOCK_VALUE_COL, ascending=False)
-    y_axis_field = CATEGORY_COL # Chart will be Category-wise
+    y_axis_field = CATEGORY_COL 
 else:
-    # Single Outlet (All or Single Category selected)
     df_chart_data = df_final_filtered.sort_values(by=STOCK_VALUE_COL, ascending=False)
-    y_axis_field = CATEGORY_COL # Chart will be Category-wise
+    y_axis_field = CATEGORY_COL 
 
 # ----------------------------------------------------
 # 3. Dynamic Key Insights
 # ----------------------------------------------------
 
-# Calculations rely on the columns being numeric after the fix above
 current_stock_value = df_final_filtered[STOCK_VALUE_COL].sum()
 current_total_sale = df_final_filtered[TOTAL_SALE_COL].sum()
 current_monthly_sale = df_final_filtered[MONTHLY_SALE_COL].sum()
@@ -127,14 +132,12 @@ with col1:
     st.metric("Total Stock Value (AED)", f"{current_stock_value:,.0f}")
 
 with col2:
-    # This line should now work as current_total_sale is guaranteed to be a number (or 0)
     st.metric("Total Sales (AED)", f"{current_total_sale:,.0f}")
 
 with col3:
     st.metric("Total Monthly Sales (AED)", f"{current_monthly_sale:,.0f}")
 
 with col4:
-    # Use the reduce stock value and status
     delta_value = f"{current_reduce_stock:,.0f}"
     st.metric(f"Inventory Status (Reduce Stock)", delta_value, delta=status)
 
