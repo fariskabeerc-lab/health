@@ -5,42 +5,37 @@ import io
 import numpy as np 
 
 # --- Column Name Constants ---
-# Use the exact, case-sensitive column names provided by the user
 OUTLET_COL = 'outlet' 
 CATEGORY_COL = 'CATEGORY'
 STOCK_VALUE_COL = 'STOCK VALUE'
 TOTAL_SALE_COL = 'TOTAL SALE'
 MONTHLY_SALE_COL = 'MONTHLY SALE'
-MAX_STOCK_COL = 'MAX STOCK'  # The column the code is looking for
+MAX_STOCK_COL = 'MAX STOCK'
 REDUCE_STOCK_COL = 'REDUCE STOCK'
-# Note: AVG PER DAY is not used in the code logic, so it's omitted from constants
 
 # --- Load Data ---
 try:
     df_data = pd.read_csv("sss.csv")
     
-    # 🚨 CRITICAL FIX 1: Clean column names by stripping whitespace 🚨
-    # This ensures "MAX STOCK " or " MAX STOCK" is treated as "MAX STOCK"
+    # CRITICAL FIX 1: Clean column names by stripping whitespace
     df_data.columns = df_data.columns.str.strip() 
 
-    # 🚨 CRITICAL FIX 2: Convert key columns to numeric.
+    # CRITICAL FIX 2: Convert key columns to numeric.
     numeric_cols = [STOCK_VALUE_COL, TOTAL_SALE_COL, MONTHLY_SALE_COL, MAX_STOCK_COL, REDUCE_STOCK_COL]
     
     for col in numeric_cols:
-        # First, strip common non-numeric characters if any were missed by the original script
         if col in df_data.columns and df_data[col].dtype == 'object':
              df_data[col] = df_data[col].astype(str).str.replace(r'[$,]', '', regex=True)
              
-        # Convert to numeric, coercing errors to NaN
         df_data[col] = pd.to_numeric(df_data[col], errors='coerce')
         
-    # Fill NaN values with 0 after coercion to prevent aggregation errors later.
     df_data[numeric_cols] = df_data[numeric_cols].fillna(0)
     
-    # 💡 Debugging tip: Check if the required column is finally present
-    if MAX_STOCK_COL not in df_data.columns:
-         st.error(f"FATAL ERROR: Column '{MAX_STOCK_COL}' still not found after cleaning. Check your CSV file header for spelling/case.")
-         st.stop()
+    # Basic check to ensure required columns exist after cleaning
+    for col_check in [OUTLET_COL, CATEGORY_COL, STOCK_VALUE_COL]:
+        if col_check not in df_data.columns:
+            st.error(f"FATAL ERROR: Column '{col_check}' is missing from the data. Check your CSV headers.")
+            st.stop()
 
 
 except FileNotFoundError:
@@ -106,6 +101,8 @@ elif selected_category == 'All Categories' and selected_outlet == 'All Outlets':
     df_chart_data = df_chart_data.sort_values(by=STOCK_VALUE_COL, ascending=False)
     y_axis_field = CATEGORY_COL 
 else:
+    # Single Outlet (All or Single Category selected)
+    # This data is NOT aggregated, and is sorted here.
     df_chart_data = df_final_filtered.sort_values(by=STOCK_VALUE_COL, ascending=False)
     y_axis_field = CATEGORY_COL 
 
@@ -177,12 +174,13 @@ else:
 
     # 4b. Multiple Items/Full Chart View (Updated to be vertical)
     else:
-        # Get the sorted list of categories/outlets for explicit sort (fixes Altair errors)
+        # Get the sorted list of categories/outlets for explicit sort (This is safer for Altair)
         sort_order = df_chart_data[y_axis_field].tolist()
         
         # Chart 1: Stock Value by Y-axis Field (Category or Outlet) - VERTICAL
+        # 🚨 FIX APPLIED HERE: Using explicit list sort instead of SortField with op='sum'
         base = alt.Chart(df_chart_data).encode(
-            x=alt.X(y_axis_field, sort=alt.SortField(field=STOCK_VALUE_COL, op='sum', order='descending'), title=y_axis_field, axis=alt.Axis(labelAngle=-45)), 
+            x=alt.X(y_axis_field, sort=sort_order, title=y_axis_field, axis=alt.Axis(labelAngle=-45)), 
             tooltip=[y_axis_field, alt.Tooltip(STOCK_VALUE_COL, format=',.0f'), MAX_STOCK_COL]
         ).properties(
             title=f"Current Stock Value by {y_axis_field}"
@@ -196,6 +194,7 @@ else:
         chart_reduce = alt.Chart(df_chart_data).transform_filter(
             alt.FieldRangePredicate(field=REDUCE_STOCK_COL, range=[None, 0])
         ).encode(
+            # 🚨 FIX APPLIED HERE: Using explicit list sort
             x=alt.X(y_axis_field, sort=sort_order, title=y_axis_field, axis=alt.Axis(labelAngle=-45)),
             y=alt.Y(REDUCE_STOCK_COL, title="Overstock (Max - Current)", scale=alt.Scale(reverse=True)), 
             color=alt.Color(REDUCE_STOCK_COL, 
