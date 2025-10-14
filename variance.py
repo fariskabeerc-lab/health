@@ -192,7 +192,7 @@ else:
             # Tooltips updated
             tooltip=[y_axis_field, alt.Tooltip(MONTHLY_SALE_COL, format=',.0f'), STOCK_VALUE_COL, MAX_STOCK_COL, AVG_PER_DAY_COL]
         ).properties(
-            title=f"Total Monthly Sale by {y_axis_field}"
+            title=f"Monthly Sale by {y_axis_field}"
         )
 
         chart_stock = base.mark_bar(color='#4c78a8').encode(
