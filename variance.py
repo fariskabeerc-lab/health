@@ -9,7 +9,7 @@ OUTLET_COL = 'outlet'
 CATEGORY_COL = 'CATEGORY'
 
 # --- Load Data ---
-EXCEL_FILE_NAME = "combined_stock_data.xlsx"
+EXCEL_FILE_NAME = "shane.Xlsx"
 
 try:
     # Reading from Excel (.xlsx).
