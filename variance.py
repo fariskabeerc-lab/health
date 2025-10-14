@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 import io
-import numpy as np 
+import numpy as np
+# NOTE: To read .xlsx files, ensure the 'openpyxl' library is installed (pip install openpyxl).
 
 # --- Column Name Constants ---
 # Using the exact case-sensitive column names provided by the user
@@ -17,8 +18,8 @@ REDUCE_STOCK_COL = 'REDUCE STOCK'
 
 # --- Load Data ---
 try:
-    # Reverting to the original expected file name for continuity
-    df_data = pd.read_csv("sss.csv")
+    # *** MODIFICATION HERE: Changed to read from an Excel file (.xlsx) ***
+    df_data = pd.read_excel("sss.xlsx")
     
     # CRITICAL FIX 1: Clean column names by stripping whitespace
     df_data.columns = df_data.columns.str.strip() 
@@ -38,15 +39,16 @@ try:
     # Basic check to ensure required columns exist after cleaning
     for col_check in [OUTLET_COL, CATEGORY_COL, STOCK_VALUE_COL, AVG_PER_DAY_COL]:
         if col_check not in df_data.columns:
-            st.error(f"FATAL ERROR: Column '{col_check}' is missing from the data. Check your CSV headers for spelling/case.")
+            st.error(f"FATAL ERROR: Column '{col_check}' is missing from the data. Check your Excel sheet headers for spelling/case.")
             st.stop()
 
 
 except FileNotFoundError:
-    st.error("Error: 'combined_stock_data.csv' not found. Please ensure the file is in the same directory as the script.")
+    # *** MODIFICATION HERE: Updated file name in error message ***
+    st.error("Error: 'sss.xlsx' not found. Please ensure the file is in the same directory as the script.")
     st.stop()
 except KeyError as e:
-    st.error(f"KeyError: Required column {e} not found. Please ensure all column constants match the CSV headers exactly (case-sensitive). Found columns: {df_data.columns.tolist()}")
+    st.error(f"KeyError: Required column {e} not found. Please ensure all column constants match the Excel headers exactly (case-sensitive). Found columns: {df_data.columns.tolist()}")
     st.stop()
 except Exception as e:
     st.error(f"An unexpected error occurred while loading or processing the data: {e}")
