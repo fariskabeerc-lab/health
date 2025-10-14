@@ -14,7 +14,7 @@ except FileNotFoundError:
 
 # --- Streamlit Layout ---
 st.set_page_config(layout="wide")
-st.title("🛒 Supermarket Inventory Analysis Dashboard")
+st.title("Al Madina Inventory Analysis Dashboard")
 
 # ----------------------------------------------------
 # 1. Sidebar Filters
