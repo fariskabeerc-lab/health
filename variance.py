@@ -17,7 +17,7 @@ REDUCE_STOCK_COL = 'REDUCE STOCK'
 # Reverting to original file name and type, but with corrected column handling
 try:
     # Ensure this file exists from the previous steps
-    df_data = pd.read_csv("combined_stock_data.csv")
+    df_data = pd.read_csv("sss.csv")
 except FileNotFoundError:
     st.error("Error: 'combined_stock_data.csv' not found. Please ensure the file is in the same directory as the script.")
     st.stop()
