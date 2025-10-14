@@ -4,7 +4,7 @@ import altair as alt
 import io
 
 # --- Column Name Constants ---
-# 🚨 Fix 1: Use the exact, case-sensitive column names from your Excel file 🚨
+# Use the exact, case-sensitive column names from your Excel file
 OUTLET_COL = 'outlet' 
 CATEGORY_COL = 'CATEGORY'
 
@@ -13,10 +13,10 @@ EXCEL_FILE_NAME = "shane.Xlsx"
 
 try:
     # Reading from Excel (.xlsx).
+    # If your data is on a specific sheet, use: pd.read_excel(EXCEL_FILE_NAME, sheet_name="Your Sheet Name")
     df_data = pd.read_excel(EXCEL_FILE_NAME)
     
-    # --- ⚠️ DEBUGGING STEP ⚠️ ---
-    # Display columns in the sidebar for confirmation
+    # ⚠️ DEBUGGING STEP ⚠️
     st.sidebar.markdown(f"**Loaded Columns:** {df_data.columns.tolist()}")
 
 except FileNotFoundError:
@@ -29,7 +29,6 @@ except Exception as e:
     st.error(f"An unexpected error occurred while loading the data: {e}")
     st.stop()
 
-
 # --- Streamlit Layout ---
 st.set_page_config(layout="wide")
 st.title("🛒 Al Madina Inventory & Sales Dashboard")
@@ -40,7 +39,6 @@ st.title("🛒 Al Madina Inventory & Sales Dashboard")
 st.sidebar.header("Filter Options")
 
 # Outlet Filter with "All Outlets" option
-# 🚨 Fix 2: Use OUTLET_COL
 outlet_list = sorted(df_data[OUTLET_COL].unique())
 outlet_options = ['All Outlets'] + outlet_list
 selected_outlet = st.sidebar.selectbox(
@@ -53,11 +51,9 @@ selected_outlet = st.sidebar.selectbox(
 if selected_outlet == 'All Outlets':
     df_outlet_filtered = df_data.copy()
 else:
-    # 🚨 Fix 3: Use OUTLET_COL
     df_outlet_filtered = df_data[df_data[OUTLET_COL] == selected_outlet].copy()
 
 # Category Filter (Radio buttons for single selection, plus 'All Categories' option)
-# 🚨 Fix 4: Use CATEGORY_COL
 category_options = ['All Categories'] + sorted(df_outlet_filtered[CATEGORY_COL].unique())
 selected_category = st.sidebar.radio(
     'Select Category:',
@@ -73,25 +69,21 @@ selected_category = st.sidebar.radio(
 if selected_category == 'All Categories':
     df_final_filtered = df_outlet_filtered
 else:
-    # 🚨 Fix 5: Use CATEGORY_COL
     df_final_filtered = df_outlet_filtered[df_outlet_filtered[CATEGORY_COL] == selected_category]
 
 
 # Determine the data source for the main chart/table based on the selection
 if selected_outlet == 'All Outlets' and selected_category != 'All Categories':
     # Aggregate data by OUTLET for the selected CATEGORY
-    # 🚨 Fix 6: Use OUTLET_COL
     df_chart_data = df_final_filtered.groupby(OUTLET_COL).sum(numeric_only=True).reset_index()
     y_axis_field = OUTLET_COL # Chart will be Outlet-wise
 elif selected_category == 'All Categories' and selected_outlet == 'All Outlets':
     # Aggregate data by CATEGORY for the overall view
-    # 🚨 Fix 7: Use CATEGORY_COL
     df_chart_data = df_final_filtered.groupby(CATEGORY_COL).sum(numeric_only=True).reset_index()
     df_chart_data = df_chart_data.sort_values(by='STOCK VALUE', ascending=False)
     y_axis_field = CATEGORY_COL # Chart will be Category-wise
 else:
     # Single Outlet (All or Single Category selected)
-    # 🚨 Fix 8: Use 'STOCK VALUE'
     df_chart_data = df_final_filtered.sort_values(by='STOCK VALUE', ascending=False)
     y_axis_field = CATEGORY_COL # Chart will be Category-wise
 
@@ -100,7 +92,6 @@ else:
 # ----------------------------------------------------
 
 # Calculate total metrics for the Key Insights from the df_final_filtered (the non-aggregated source data)
-# 🚨 Fix 9-12: Use correct column names
 current_stock_value = df_final_filtered['STOCK VALUE'].sum()
 current_total_sale = df_final_filtered['TOTAL SALE'].sum()
 current_monthly_sale = df_final_filtered['MONTHLY SALE'].sum()
@@ -144,7 +135,6 @@ else:
     if selected_category != 'All Categories' and selected_outlet != 'All Outlets':
         # Reuse logic for single item view: simpler table and stock vs max chart
         data_display = df_chart_data.iloc[0]
-        # 🚨 Fix 13: Use correct column names
         st.table(data_display[[CATEGORY_COL, 'STOCK VALUE', 'REDUCE STOCK', 'MAX STOCK', 'MONTHLY SALE', 'TOTAL SALE']].rename({
             'STOCK VALUE': 'Current Stock Value', 
             'REDUCE STOCK': 'Max Stock - Current Stock',
@@ -154,7 +144,6 @@ else:
         st.subheader("Stock vs. Max Stock")
         stock_chart_data = pd.DataFrame({
             'Metric': ['Current Stock', 'Max Stock'],
-            # 🚨 Fix 14: Use correct column names
             'Value': [data_display['STOCK VALUE'], data_display['MAX STOCK']]
         })
         
@@ -170,39 +159,33 @@ else:
     # 4b. Multiple Items/Full Chart View (Updated to be vertical)
     else:
         # Sort the visualization data by Stock Value
-        # 🚨 Fix 15: Use 'STOCK VALUE'
-        df_chart_data = df_chart_data.sort_values(by='STOCK VALUE', ascending=False)
+        # df_chart_data is already sorted by 'STOCK VALUE' from section 2
         
         # Chart 1: Stock Value by Y-axis Field (Category or Outlet) - VERTICAL
         base = alt.Chart(df_chart_data).encode(
-            x=alt.X(y_axis_field, sort='-y', title=y_axis_field, axis=alt.Axis(labelAngle=-45)), # Set X to category/outlet, add rotation for labels
-            # 🚨 Fix 16: Use correct column names
+            x=alt.X(y_axis_field, sort=alt.SortField(field='STOCK VALUE', op='sum', order='descending'), title=y_axis_field, axis=alt.Axis(labelAngle=-45)), 
             tooltip=[y_axis_field, alt.Tooltip('STOCK VALUE', format=',.0f'), 'MAX STOCK']
         ).properties(
             title=f"Current Stock Value by {y_axis_field}"
         )
 
         chart_stock = base.mark_bar(color='#4c78a8').encode(
-            # 🚨 Fix 17: Use 'STOCK VALUE'
-            y=alt.Y('STOCK VALUE', title="Current Stock Value (AED)"), # Set Y to value field
+            y=alt.Y('STOCK VALUE', title="Current Stock Value (AED)"),
         )
 
-        # Chart 2: Reduce Stock by Y-axis Field - VERTICAL with INVERTED Y-AXIS (Filtered to only show <= 0)
-        # 🚨 Fix 18: Use 'REDUCE STOCK'
+        # Chart 2: Reduce Stock by Y-axis Field - VERTICAL with INVERTED Y-AXIS
+        # ⚠️ CRITICAL FIX APPLIED HERE: Using the list of sorted categories/outlets for sort order
+        sort_order = df_chart_data[y_axis_field].tolist()
+        
         chart_reduce = alt.Chart(df_chart_data).transform_filter(
             alt.FieldRangePredicate(field="REDUCE STOCK", range=[None, 0]) # Filter: Keep only Reduce Stock <= 0 (Overstocked)
         ).encode(
-            # Use the same sort order as the stock chart, applied to X axis
-            # 🚨 Fix 19: Use 'STOCK VALUE'
-            x=alt.X(y_axis_field, sort=alt.EncodingSortField(field="STOCK VALUE", op="sum", order='descending'), title=y_axis_field, axis=alt.Axis(labelAngle=-45)),
-            # 🚨 Fix 20: Use 'REDUCE STOCK'
+            # Apply the explicit sort order derived from the main chart's data
+            x=alt.X(y_axis_field, sort=sort_order, title=y_axis_field, axis=alt.Axis(labelAngle=-45)),
             y=alt.Y('REDUCE STOCK', title="Overstock (Max - Current)", scale=alt.Scale(reverse=True)), 
-            # 🚨 Fix 21: Use 'REDUCE STOCK'
             color=alt.Color('REDUCE STOCK', 
-                            # Adjust color range/domain since only negative/zero values remain
                             scale=alt.Scale(domain=[df_chart_data['REDUCE STOCK'].min(), 0], range=['red', 'gray']),
                             legend=None),
-            # 🚨 Fix 22: Use 'REDUCE STOCK'
             tooltip=[y_axis_field, alt.Tooltip('REDUCE STOCK', format=',.0f')]
         ).mark_bar().properties(
             title=f"Overstocked Items (Reduce Stock $\le 0$) by {y_axis_field}"
@@ -224,11 +207,9 @@ else:
     # 5. Display the filtered data table (always show this)
     st.subheader("Filtered Data Table")
     # Determine the columns to show in the table
-    # 🚨 Fix 23: Use correct column names
     table_cols = [OUTLET_COL, CATEGORY_COL, 'STOCK VALUE', 'REDUCE STOCK', 'TOTAL SALE', 'MAX STOCK', 'MONTHLY SALE']
     
     # Filter columns based on the selection to keep the table clean and relevant
-    # 🚨 Fix 24-25: Use column name constants
     if selected_outlet != 'All Outlets':
         table_cols.remove(OUTLET_COL)
     if selected_category != 'All Categories':
