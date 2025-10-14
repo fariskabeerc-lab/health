@@ -5,12 +5,13 @@ import io
 import numpy as np 
 
 # --- Column Name Constants ---
+# Using the exact case-sensitive column names provided by the user
 OUTLET_COL = 'outlet' 
 CATEGORY_COL = 'CATEGORY'
 STOCK_VALUE_COL = 'STOCK VALUE'
 TOTAL_SALE_COL = 'TOTAL SALE'
-AVG_PER_DAY_COL = 'AVG PER DAY' # 💡 New constant for the column to be used
-MONTHLY_SALE_COL = 'MONTHLY SALE' 
+AVG_PER_DAY_COL = 'AVG PER DAY'
+MONTHLY_SALE_COL = 'MONTHLY SALE'
 MAX_STOCK_COL = 'MAX STOCK'
 REDUCE_STOCK_COL = 'REDUCE STOCK'
 
@@ -21,20 +22,22 @@ try:
     # CRITICAL FIX 1: Clean column names by stripping whitespace
     df_data.columns = df_data.columns.str.strip() 
 
-    # CRITICAL FIX 2: Convert key columns to numeric.
+    # CRITICAL FIX 2: Convert key columns to numeric, coercing errors to 0
     numeric_cols = [STOCK_VALUE_COL, TOTAL_SALE_COL, AVG_PER_DAY_COL, MONTHLY_SALE_COL, MAX_STOCK_COL, REDUCE_STOCK_COL]
     
     for col in numeric_cols:
         if col in df_data.columns and df_data[col].dtype == 'object':
+             # Attempt to clean up strings by removing common currency symbols/commas
              df_data[col] = df_data[col].astype(str).str.replace(r'[$,]', '', regex=True)
              
         df_data[col] = pd.to_numeric(df_data[col], errors='coerce')
         
     df_data[numeric_cols] = df_data[numeric_cols].fillna(0)
     
-    for col_check in [OUTLET_COL, CATEGORY_COL, STOCK_VALUE_COL]:
+    # Basic check to ensure required columns exist after cleaning
+    for col_check in [OUTLET_COL, CATEGORY_COL, STOCK_VALUE_COL, AVG_PER_DAY_COL]:
         if col_check not in df_data.columns:
-            st.error(f"FATAL ERROR: Column '{col_check}' is missing from the data. Check your CSV headers.")
+            st.error(f"FATAL ERROR: Column '{col_check}' is missing from the data. Check your CSV headers for spelling/case.")
             st.stop()
 
 
@@ -98,12 +101,12 @@ if selected_outlet == 'All Outlets' and selected_category != 'All Categories':
     y_axis_field = OUTLET_COL 
 elif selected_category == 'All Categories' and selected_outlet == 'All Outlets':
     df_chart_data = df_final_filtered.groupby(CATEGORY_COL).sum(numeric_only=True).reset_index()
-    # Sort by MONTHLY SALE
+    # Sort by MONTHLY SALE for chart order
     df_chart_data = df_chart_data.sort_values(by=MONTHLY_SALE_COL, ascending=False)
     y_axis_field = CATEGORY_COL 
 else:
     # Single Outlet (All or Single Category selected)
-    # Sort by MONTHLY SALE
+    # Sort by MONTHLY SALE for chart order
     df_chart_data = df_final_filtered.sort_values(by=MONTHLY_SALE_COL, ascending=False)
     y_axis_field = CATEGORY_COL 
 
@@ -112,9 +115,7 @@ else:
 # ----------------------------------------------------
 
 current_stock_value = df_final_filtered[STOCK_VALUE_COL].sum()
-current_total_sale = df_final_filtered[TOTAL_SALE_COL].sum()
 current_monthly_sale = df_final_filtered[MONTHLY_SALE_COL].sum()
-# 💡 NEW CALCULATION: Sum AVG PER DAY
 current_avg_per_day = df_final_filtered[AVG_PER_DAY_COL].sum()
 current_reduce_stock = df_final_filtered[REDUCE_STOCK_COL].sum()
 
@@ -135,7 +136,6 @@ with col2:
     st.metric("Total Monthly Sales (AED)", f"{current_monthly_sale:,.0f}")
 
 with col3:
-    # 💡 CHANGE: Display AVG PER DAY
     st.metric("Total Avg. Per Day (AED)", f"{current_avg_per_day:,.0f}")
 
 with col4:
@@ -143,9 +143,10 @@ with col4:
     st.metric(f"Inventory Status (Reduce Stock)", delta_value, delta=status)
 
 st.markdown("---")
-***
-# 4. Visualization and Table
 
+# ----------------------------------------------------
+# 4. Visualization and Table
+# ----------------------------------------------------
 if df_chart_data.empty:
     st.warning("No data to display for the current selection.")
 else:
@@ -177,20 +178,20 @@ else:
 
     # 4b. Multiple Items/Full Chart View (Uses Monthly Sale for Chart 1)
     else:
-        # Get the sorted list of categories/outlets for explicit sort
+        # Get the sorted list of categories/outlets for explicit sort (prevents Altair SchemaValidationError)
         sort_order = df_chart_data[y_axis_field].tolist()
         
         # Chart 1: Monthly Sale by Y-axis Field (Category or Outlet) - VERTICAL
         base = alt.Chart(df_chart_data).encode(
             x=alt.X(y_axis_field, sort=sort_order, title=y_axis_field, axis=alt.Axis(labelAngle=-45)), 
-            # Update tooltips
+            # Tooltips updated
             tooltip=[y_axis_field, alt.Tooltip(MONTHLY_SALE_COL, format=',.0f'), STOCK_VALUE_COL, MAX_STOCK_COL, AVG_PER_DAY_COL]
         ).properties(
             title=f"Total Monthly Sale by {y_axis_field}"
         )
 
         chart_stock = base.mark_bar(color='#4c78a8').encode(
-            # Use MONTHLY_SALE_COL for the Y-axis
+            # Y-axis uses Monthly Sale
             y=alt.Y(MONTHLY_SALE_COL, title="Monthly Sale (AED)"), 
         )
         
@@ -221,14 +222,14 @@ else:
 
         st.altair_chart(final_chart, use_container_width=True)
 
-# 5. Display the filtered data table (always show this)
-st.subheader("Filtered Data Table")
-table_cols = [OUTLET_COL, CATEGORY_COL, STOCK_VALUE_COL, REDUCE_STOCK_COL, TOTAL_SALE_COL, MAX_STOCK_COL, MONTHLY_SALE_COL, AVG_PER_DAY_COL]
+    # 5. Display the filtered data table (always show this)
+    st.subheader("Filtered Data Table")
+    table_cols = [OUTLET_COL, CATEGORY_COL, STOCK_VALUE_COL, REDUCE_STOCK_COL, TOTAL_SALE_COL, MAX_STOCK_COL, MONTHLY_SALE_COL, AVG_PER_DAY_COL]
 
-if selected_outlet != 'All Outlets':
-    table_cols.remove(OUTLET_COL)
-if selected_category != 'All Categories':
-    table_cols.remove(CATEGORY_COL)
+    if selected_outlet != 'All Outlets':
+        table_cols.remove(OUTLET_COL)
+    if selected_category != 'All Categories':
+        table_cols.remove(CATEGORY_COL)
 
-st.dataframe(df_final_filtered[table_cols],
-             use_container_width=True)
+    st.dataframe(df_final_filtered[table_cols],
+                 use_container_width=True)
