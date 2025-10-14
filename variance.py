@@ -4,15 +4,30 @@ import altair as alt
 import io
 
 # --- Load Data ---
-# Load the pre-processed and combined data
+# Load the pre-processed and combined data from an Excel file
+EXCEL_FILE_NAME = "shane.Xlsx"
+COLUMN_TO_FILTER = 'outlet' # Ensure this matches the exact column name in your Excel file
+
 try:
-    # 🚨 CHANGE 1: Reading from Excel (.xlsx) instead of CSV
-    # Make sure you have the 'openpyxl' or 'xlrd' library installed: pip install openpyxl
-    df_data = pd.read_excel("shane.Xlsx")
+    # Reading from Excel (.xlsx). Requires 'openpyxl' or 'xlrd' to be installed.
+    # If your data is on a specific sheet, use: pd.read_excel(EXCEL_FILE_NAME, sheet_name="Your Sheet Name")
+    df_data = pd.read_excel(EXCEL_FILE_NAME)
+    
+    # --- ⚠️ DEBUGGING STEP ⚠️ ---
+    # This line will show you the exact column names read from the Excel file.
+    # If 'Outlet' is not present, check this output and correct the COLUMN_TO_FILTER variable above.
+    st.sidebar.markdown(f"**Loaded Columns:** {df_data.columns.tolist()}")
+
 except FileNotFoundError:
-    # 🚨 CHANGE 2: Update the error message to reflect the new file name
-    st.error("Error: 'combined_stock_data.xlsx' not found. Please ensure the Excel file is in the same directory as the script.")
+    st.error(f"Error: '{EXCEL_FILE_NAME}' not found. Please ensure the Excel file is in the same directory as the script.")
     st.stop()
+except KeyError as e:
+    st.error(f"KeyError: The required column '{COLUMN_TO_FILTER}' was not found in the Excel file. Please check the spelling and case of your column headers. Found columns: {df_data.columns.tolist()}")
+    st.stop()
+except Exception as e:
+    st.error(f"An unexpected error occurred while loading the data: {e}")
+    st.stop()
+
 
 # --- Streamlit Layout ---
 st.set_page_config(layout="wide")
@@ -24,7 +39,7 @@ st.title("🛒 Al Madina Inventory & Sales Dashboard")
 st.sidebar.header("Filter Options")
 
 # Outlet Filter with "All Outlets" option
-outlet_list = sorted(df_data['Outlet'].unique())
+outlet_list = sorted(df_data[COLUMN_TO_FILTER].unique()) # Use the verified column name
 outlet_options = ['All Outlets'] + outlet_list
 selected_outlet = st.sidebar.selectbox(
     'Select Outlet:',
@@ -36,7 +51,7 @@ selected_outlet = st.sidebar.selectbox(
 if selected_outlet == 'All Outlets':
     df_outlet_filtered = df_data.copy()
 else:
-    df_outlet_filtered = df_data[df_data['Outlet'] == selected_outlet].copy()
+    df_outlet_filtered = df_data[df_data[COLUMN_TO_FILTER] == selected_outlet].copy() # Use the verified column name
 
 # Category Filter (Radio buttons for single selection, plus 'All Categories' option)
 category_options = ['All Categories'] + sorted(df_outlet_filtered['Category'].unique())
@@ -59,9 +74,9 @@ else:
 
 # Determine the data source for the main chart/table based on the selection
 if selected_outlet == 'All Outlets' and selected_category != 'All Categories':
-    # This is the new required case: Aggregate data by OUTLET for the selected CATEGORY
-    df_chart_data = df_final_filtered.groupby('Outlet').sum(numeric_only=True).reset_index()
-    y_axis_field = 'Outlet' # Chart will be Outlet-wise
+    # Aggregate data by OUTLET for the selected CATEGORY
+    df_chart_data = df_final_filtered.groupby(COLUMN_TO_FILTER).sum(numeric_only=True).reset_index() # Use the verified column name
+    y_axis_field = COLUMN_TO_FILTER # Chart will be Outlet-wise
 elif selected_category == 'All Categories' and selected_outlet == 'All Outlets':
     # Aggregate data by CATEGORY for the overall view
     df_chart_data = df_final_filtered.groupby('Category').sum(numeric_only=True).reset_index()
@@ -190,11 +205,11 @@ else:
     # 5. Display the filtered data table (always show this)
     st.subheader("Filtered Data Table")
     # Determine the columns to show in the table
-    table_cols = ['Outlet', 'Category', 'Stock Value', 'Reduce Stock', 'Total Sale', 'Max Stock', 'Monthly Sale']
+    table_cols = [COLUMN_TO_FILTER, 'Category', 'Stock Value', 'Reduce Stock', 'Total Sale', 'Max Stock', 'Monthly Sale']
     
     # Filter columns based on the selection to keep the table clean and relevant
     if selected_outlet != 'All Outlets':
-        table_cols.remove('Outlet')
+        table_cols.remove(COLUMN_TO_FILTER)
     if selected_category != 'All Categories':
         table_cols.remove('Category')
     
