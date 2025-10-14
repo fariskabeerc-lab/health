@@ -139,28 +139,28 @@ else:
         )
         st.altair_chart(stock_bar_chart, use_container_width=True)
 
-    # 4b. Multiple Items/Full Chart View
+    # 4b. Multiple Items/Full Chart View (Updated to be vertical)
     else:
         # Sort the visualization data by Stock Value
         df_chart_data = df_chart_data.sort_values(by='Stock Value', ascending=False)
         
-        # Chart 1: Stock Value by Y-axis Field (Category or Outlet)
+        # Chart 1: Stock Value by Y-axis Field (Category or Outlet) - NOW VERTICAL
         base = alt.Chart(df_chart_data).encode(
-            y=alt.Y(y_axis_field, sort='-x', title=y_axis_field),
+            x=alt.X(y_axis_field, sort='-y', title=y_axis_field, axis=alt.Axis(labelAngle=-45)), # Set X to category/outlet, add rotation for labels
             tooltip=[y_axis_field, alt.Tooltip('Stock Value', format=',.0f'), 'Max Stock']
         ).properties(
             title=f"Current Stock Value by {y_axis_field}"
         )
 
         chart_stock = base.mark_bar(color='#4c78a8').encode(
-            x=alt.X('Stock Value', title="Current Stock Value (AED)"),
+            y=alt.Y('Stock Value', title="Current Stock Value (AED)"), # Set Y to value field
         )
 
-        # Chart 2: Reduce Stock by Y-axis Field
+        # Chart 2: Reduce Stock by Y-axis Field - NOW VERTICAL
         chart_reduce = alt.Chart(df_chart_data).encode(
-            # Use the same sort order as the stock chart
-            y=alt.Y(y_axis_field, sort=alt.EncodingSortField(field="Stock Value", op="sum", order='descending')),
-            x=alt.X('Reduce Stock', title="Reduce Stock (Max Stock - Current Stock)"),
+            # Use the same sort order as the stock chart, applied to X axis
+            x=alt.X(y_axis_field, sort=alt.EncodingSortField(field="Stock Value", op="sum", order='descending'), title=y_axis_field, axis=alt.Axis(labelAngle=-45)),
+            y=alt.Y('Reduce Stock', title="Reduce Stock (Max Stock - Current Stock)"), # Set Y to value field
             color=alt.Color('Reduce Stock', 
                             scale=alt.Scale(domain=[df_chart_data['Reduce Stock'].min(), 0, df_chart_data['Reduce Stock'].max()], range=['red', 'gray', 'green']),
                             legend=None),
@@ -174,7 +174,7 @@ else:
             chart_stock,
             chart_reduce
         ).resolve_scale(
-            y='shared'
+            x='shared' # Share the X-axis (Category/Outlet) between the two charts
         ).configure_title(
             fontSize=16,
             anchor='start'
