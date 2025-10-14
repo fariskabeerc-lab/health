@@ -9,7 +9,8 @@ OUTLET_COL = 'outlet'
 CATEGORY_COL = 'CATEGORY'
 STOCK_VALUE_COL = 'STOCK VALUE'
 TOTAL_SALE_COL = 'TOTAL SALE'
-MONTHLY_SALE_COL = 'MONTHLY SALE' # 💡 Column to use for comparison
+AVG_PER_DAY_COL = 'AVG PER DAY' # 💡 New constant for the column to be used
+MONTHLY_SALE_COL = 'MONTHLY SALE' 
 MAX_STOCK_COL = 'MAX STOCK'
 REDUCE_STOCK_COL = 'REDUCE STOCK'
 
@@ -21,7 +22,7 @@ try:
     df_data.columns = df_data.columns.str.strip() 
 
     # CRITICAL FIX 2: Convert key columns to numeric.
-    numeric_cols = [STOCK_VALUE_COL, TOTAL_SALE_COL, MONTHLY_SALE_COL, MAX_STOCK_COL, REDUCE_STOCK_COL]
+    numeric_cols = [STOCK_VALUE_COL, TOTAL_SALE_COL, AVG_PER_DAY_COL, MONTHLY_SALE_COL, MAX_STOCK_COL, REDUCE_STOCK_COL]
     
     for col in numeric_cols:
         if col in df_data.columns and df_data[col].dtype == 'object':
@@ -111,8 +112,10 @@ else:
 # ----------------------------------------------------
 
 current_stock_value = df_final_filtered[STOCK_VALUE_COL].sum()
-current_total_sale = df_final_filtered[TOTAL_SALE_COL].sum() # Still calculate Total Sale for potential future use
+current_total_sale = df_final_filtered[TOTAL_SALE_COL].sum()
 current_monthly_sale = df_final_filtered[MONTHLY_SALE_COL].sum()
+# 💡 NEW CALCULATION: Sum AVG PER DAY
+current_avg_per_day = df_final_filtered[AVG_PER_DAY_COL].sum()
 current_reduce_stock = df_final_filtered[REDUCE_STOCK_COL].sum()
 
 # Determine Overstocked/Understocked status for the status message
@@ -129,22 +132,20 @@ with col1:
     st.metric("Total Stock Value (AED)", f"{current_stock_value:,.0f}")
 
 with col2:
-    # 💡 CHANGE: Display Total Monthly Sales instead of Total Sales
     st.metric("Total Monthly Sales (AED)", f"{current_monthly_sale:,.0f}")
 
 with col3:
-    # This will now be a duplicate of col2, but the original intent was likely a time-based breakdown
-    st.metric("Monthly Sales Value", f"{current_monthly_sale:,.0f}")
+    # 💡 CHANGE: Display AVG PER DAY
+    st.metric("Total Avg. Per Day (AED)", f"{current_avg_per_day:,.0f}")
 
 with col4:
     delta_value = f"{current_reduce_stock:,.0f}"
     st.metric(f"Inventory Status (Reduce Stock)", delta_value, delta=status)
 
 st.markdown("---")
-
-# ----------------------------------------------------
+***
 # 4. Visualization and Table
-# ----------------------------------------------------
+
 if df_chart_data.empty:
     st.warning("No data to display for the current selection.")
 else:
@@ -153,7 +154,7 @@ else:
     # 4a. Single Item View 
     if selected_category != 'All Categories' and selected_outlet != 'All Outlets':
         data_display = df_chart_data.iloc[0]
-        st.table(data_display[[CATEGORY_COL, STOCK_VALUE_COL, REDUCE_STOCK_COL, MAX_STOCK_COL, MONTHLY_SALE_COL, TOTAL_SALE_COL]].rename({
+        st.table(data_display[[CATEGORY_COL, STOCK_VALUE_COL, REDUCE_STOCK_COL, MAX_STOCK_COL, MONTHLY_SALE_COL, TOTAL_SALE_COL, AVG_PER_DAY_COL]].rename({
             STOCK_VALUE_COL: 'Current Stock Value', 
             REDUCE_STOCK_COL: 'Max Stock - Current Stock',
             MAX_STOCK_COL: 'Max Allowed Stock'
@@ -183,7 +184,7 @@ else:
         base = alt.Chart(df_chart_data).encode(
             x=alt.X(y_axis_field, sort=sort_order, title=y_axis_field, axis=alt.Axis(labelAngle=-45)), 
             # Update tooltips
-            tooltip=[y_axis_field, alt.Tooltip(MONTHLY_SALE_COL, format=',.0f'), STOCK_VALUE_COL, MAX_STOCK_COL]
+            tooltip=[y_axis_field, alt.Tooltip(MONTHLY_SALE_COL, format=',.0f'), STOCK_VALUE_COL, MAX_STOCK_COL, AVG_PER_DAY_COL]
         ).properties(
             title=f"Total Monthly Sale by {y_axis_field}"
         )
@@ -220,14 +221,14 @@ else:
 
         st.altair_chart(final_chart, use_container_width=True)
 
-    # 5. Display the filtered data table (always show this)
-    st.subheader("Filtered Data Table")
-    table_cols = [OUTLET_COL, CATEGORY_COL, STOCK_VALUE_COL, REDUCE_STOCK_COL, TOTAL_SALE_COL, MAX_STOCK_COL, MONTHLY_SALE_COL]
-    
-    if selected_outlet != 'All Outlets':
-        table_cols.remove(OUTLET_COL)
-    if selected_category != 'All Categories':
-        table_cols.remove(CATEGORY_COL)
-    
-    st.dataframe(df_final_filtered[table_cols],
-                 use_container_width=True)
+# 5. Display the filtered data table (always show this)
+st.subheader("Filtered Data Table")
+table_cols = [OUTLET_COL, CATEGORY_COL, STOCK_VALUE_COL, REDUCE_STOCK_COL, TOTAL_SALE_COL, MAX_STOCK_COL, MONTHLY_SALE_COL, AVG_PER_DAY_COL]
+
+if selected_outlet != 'All Outlets':
+    table_cols.remove(OUTLET_COL)
+if selected_category != 'All Categories':
+    table_cols.remove(CATEGORY_COL)
+
+st.dataframe(df_final_filtered[table_cols],
+             use_container_width=True)
