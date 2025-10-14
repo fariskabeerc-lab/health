@@ -9,7 +9,7 @@ OUTLET_COL = 'outlet'
 CATEGORY_COL = 'CATEGORY'
 STOCK_VALUE_COL = 'STOCK VALUE'
 TOTAL_SALE_COL = 'TOTAL SALE'
-MONTHLY_SALE_COL = 'MONTHLY SALE'
+MONTHLY_SALE_COL = 'MONTHLY SALE' # 💡 Column to use for comparison
 MAX_STOCK_COL = 'MAX STOCK'
 REDUCE_STOCK_COL = 'REDUCE STOCK'
 
@@ -31,7 +31,6 @@ try:
         
     df_data[numeric_cols] = df_data[numeric_cols].fillna(0)
     
-    # Basic check to ensure required columns exist after cleaning
     for col_check in [OUTLET_COL, CATEGORY_COL, STOCK_VALUE_COL]:
         if col_check not in df_data.columns:
             st.error(f"FATAL ERROR: Column '{col_check}' is missing from the data. Check your CSV headers.")
@@ -98,12 +97,13 @@ if selected_outlet == 'All Outlets' and selected_category != 'All Categories':
     y_axis_field = OUTLET_COL 
 elif selected_category == 'All Categories' and selected_outlet == 'All Outlets':
     df_chart_data = df_final_filtered.groupby(CATEGORY_COL).sum(numeric_only=True).reset_index()
-    df_chart_data = df_chart_data.sort_values(by=STOCK_VALUE_COL, ascending=False)
+    # Sort by MONTHLY SALE
+    df_chart_data = df_chart_data.sort_values(by=MONTHLY_SALE_COL, ascending=False)
     y_axis_field = CATEGORY_COL 
 else:
     # Single Outlet (All or Single Category selected)
-    # This data is NOT aggregated, and is sorted here.
-    df_chart_data = df_final_filtered.sort_values(by=STOCK_VALUE_COL, ascending=False)
+    # Sort by MONTHLY SALE
+    df_chart_data = df_final_filtered.sort_values(by=MONTHLY_SALE_COL, ascending=False)
     y_axis_field = CATEGORY_COL 
 
 # ----------------------------------------------------
@@ -111,7 +111,7 @@ else:
 # ----------------------------------------------------
 
 current_stock_value = df_final_filtered[STOCK_VALUE_COL].sum()
-current_total_sale = df_final_filtered[TOTAL_SALE_COL].sum()
+current_total_sale = df_final_filtered[TOTAL_SALE_COL].sum() # Still calculate Total Sale for potential future use
 current_monthly_sale = df_final_filtered[MONTHLY_SALE_COL].sum()
 current_reduce_stock = df_final_filtered[REDUCE_STOCK_COL].sum()
 
@@ -129,10 +129,12 @@ with col1:
     st.metric("Total Stock Value (AED)", f"{current_stock_value:,.0f}")
 
 with col2:
-    st.metric("Total Sales (AED)", f"{current_total_sale:,.0f}")
+    # 💡 CHANGE: Display Total Monthly Sales instead of Total Sales
+    st.metric("Total Monthly Sales (AED)", f"{current_monthly_sale:,.0f}")
 
 with col3:
-    st.metric("Total Monthly Sales (AED)", f"{current_monthly_sale:,.0f}")
+    # This will now be a duplicate of col2, but the original intent was likely a time-based breakdown
+    st.metric("Monthly Sales Value", f"{current_monthly_sale:,.0f}")
 
 with col4:
     delta_value = f"{current_reduce_stock:,.0f}"
@@ -146,9 +148,9 @@ st.markdown("---")
 if df_chart_data.empty:
     st.warning("No data to display for the current selection.")
 else:
-    st.subheader(f"{y_axis_field} Breakdown")
+    st.subheader(f"{y_axis_field} Breakdown (Sorted by Monthly Sale)")
 
-    # 4a. Single Item View (for a single Category in a single Outlet)
+    # 4a. Single Item View 
     if selected_category != 'All Categories' and selected_outlet != 'All Outlets':
         data_display = df_chart_data.iloc[0]
         st.table(data_display[[CATEGORY_COL, STOCK_VALUE_COL, REDUCE_STOCK_COL, MAX_STOCK_COL, MONTHLY_SALE_COL, TOTAL_SALE_COL]].rename({
@@ -172,29 +174,29 @@ else:
         )
         st.altair_chart(stock_bar_chart, use_container_width=True)
 
-    # 4b. Multiple Items/Full Chart View (Updated to be vertical)
+    # 4b. Multiple Items/Full Chart View (Uses Monthly Sale for Chart 1)
     else:
-        # Get the sorted list of categories/outlets for explicit sort (This is safer for Altair)
+        # Get the sorted list of categories/outlets for explicit sort
         sort_order = df_chart_data[y_axis_field].tolist()
         
-        # Chart 1: Stock Value by Y-axis Field (Category or Outlet) - VERTICAL
-        # 🚨 FIX APPLIED HERE: Using explicit list sort instead of SortField with op='sum'
+        # Chart 1: Monthly Sale by Y-axis Field (Category or Outlet) - VERTICAL
         base = alt.Chart(df_chart_data).encode(
             x=alt.X(y_axis_field, sort=sort_order, title=y_axis_field, axis=alt.Axis(labelAngle=-45)), 
-            tooltip=[y_axis_field, alt.Tooltip(STOCK_VALUE_COL, format=',.0f'), MAX_STOCK_COL]
+            # Update tooltips
+            tooltip=[y_axis_field, alt.Tooltip(MONTHLY_SALE_COL, format=',.0f'), STOCK_VALUE_COL, MAX_STOCK_COL]
         ).properties(
-            title=f"Current Stock Value by {y_axis_field}"
+            title=f"Total Monthly Sale by {y_axis_field}"
         )
 
         chart_stock = base.mark_bar(color='#4c78a8').encode(
-            y=alt.Y(STOCK_VALUE_COL, title="Current Stock Value (AED)"),
+            # Use MONTHLY_SALE_COL for the Y-axis
+            y=alt.Y(MONTHLY_SALE_COL, title="Monthly Sale (AED)"), 
         )
         
-        # Chart 2: Reduce Stock by Y-axis Field - VERTICAL with INVERTED Y-AXIS (Filtered to only show <= 0)
+        # Chart 2: Reduce Stock (Inventory Health) remains the same
         chart_reduce = alt.Chart(df_chart_data).transform_filter(
             alt.FieldRangePredicate(field=REDUCE_STOCK_COL, range=[None, 0])
         ).encode(
-            # 🚨 FIX APPLIED HERE: Using explicit list sort
             x=alt.X(y_axis_field, sort=sort_order, title=y_axis_field, axis=alt.Axis(labelAngle=-45)),
             y=alt.Y(REDUCE_STOCK_COL, title="Overstock (Max - Current)", scale=alt.Scale(reverse=True)), 
             color=alt.Color(REDUCE_STOCK_COL, 
