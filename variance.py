@@ -8,7 +8,7 @@ import io
 try:
     # 🚨 CHANGE 1: Reading from Excel (.xlsx) instead of CSV
     # Make sure you have the 'openpyxl' or 'xlrd' library installed: pip install openpyxl
-    df_data = pd.read_excel("combined_stock_data.xlsx")
+    df_data = pd.read_excel("shane.Xlsx")
 except FileNotFoundError:
     # 🚨 CHANGE 2: Update the error message to reflect the new file name
     st.error("Error: 'combined_stock_data.xlsx' not found. Please ensure the Excel file is in the same directory as the script.")
