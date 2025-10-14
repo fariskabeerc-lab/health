@@ -19,7 +19,7 @@ REDUCE_STOCK_COL = 'REDUCE STOCK'
 # --- Load Data ---
 try:
     # *** MODIFICATION HERE: Changed to read from an Excel file (.xlsx) ***
-    df_data = pd.read_excel("sss.xlsx")
+    df_data = pd.read_excel("shane.Xlsx")
     
     # CRITICAL FIX 1: Clean column names by stripping whitespace
     df_data.columns = df_data.columns.str.strip() 
